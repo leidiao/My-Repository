@@ -53,6 +53,12 @@ extern volatile u32 G_u32SystemTime1ms;                /* From board-specific so
 extern volatile u32 G_u32SystemTime1s;                 /* From board-specific source file */
 
 
+extern AntSetupDataType G_stAntSetupData;                         /* From ant.c */
+extern u32 G_u32AntApiCurrentDataTimeStamp;                       /* From ant_api.c */
+extern AntApplicationMessageType G_eAntApiCurrentMessageClass;    /* From ant_api.c */
+extern u8 G_au8AntApiCurrentData[ANT_APPLICATION_MESSAGE_BYTES];  /* From ant_api.c */
+
+
 /***********************************************************************************************************************
 Global variable definitions with scope limited to this local application.
 Variable names shall start with "UserApp_" and be declared as static.
@@ -88,16 +94,38 @@ Promises:
 */
 void UserAppInitialize(void)
 {
+  u8 au8WelcomeMessage[] = "ANT SLAVE DEMO";
+  u8 au8Instructions[] = "B0 toggles radio";
+  
+  /* Clear screen and place start messages */
+  LCDCommand(LCD_CLEAR_CMD);
+  LCDMessage(LINE1_START_ADDR, au8WelcomeMessage); 
+  LCDMessage(LINE2_START_ADDR, au8Instructions); 
+
+  /* Start with LED0 in RED state = channel is not configured */
+  LedOn(RED);
+  
+ /* Configure ANT for this application */
+  G_stAntSetupData.AntChannel          = ANT_CHANNEL_USERAPP;
+  G_stAntSetupData.AntSerialLo         = ANT_SERIAL_LO_USERAPP;
+  G_stAntSetupData.AntSerialHi         = ANT_SERIAL_HI_USERAPP;
+  G_stAntSetupData.AntDeviceType       = ANT_DEVICE_TYPE_USERAPP;
+  G_stAntSetupData.AntTransmissionType = ANT_TRANSMISSION_TYPE_USERAPP;
+  G_stAntSetupData.AntChannelPeriodLo  = ANT_CHANNEL_PERIOD_LO_USERAPP;
+  G_stAntSetupData.AntChannelPeriodHi  = ANT_CHANNEL_PERIOD_HI_USERAPP;
+  G_stAntSetupData.AntFrequency        = ANT_FREQUENCY_USERAPP;
+  G_stAntSetupData.AntTxPower          = ANT_TX_POWER_USERAPP;
   
   /* If good initialization, set state to Idle */
-  if( 1 )
+  if( AntChannelConfig(ANT_SLAVE) )
   {
+    /* Channel is configured, so change LED to yellow */
     UserApp_StateMachine = UserAppSM_Idle;
   }
   else
   {
     /* The task isn't properly initialized, so shut it down and don't run */
-    UserApp_StateMachine = UserAppSM_FailedInit;
+    UserApp_StateMachine = UserAppSM_Error;
   }
 
 } /* end UserAppInitialize() */
@@ -137,8 +165,40 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
+  /* Look for BUTTON 0 to open channel */
+  if(WasButtonPressed(BUTTON0))
+  {
+    /* Got the button, so complete one-time actions before next state */
+    ButtonAcknowledge(BUTTON0);
+    
+    /* Queue open channel and change LED0 from yellow to blinking green to indicate channel is opening */
+    AntOpenChannel(); 
+    UserApp_StateMachine = UserAppSM_WaitChannelOpen;
+  }
     
 } /* end UserAppSM_Idle() */
+
+
+/*-------------------------------------------------------------------------------------------------------------------*/
+/* Handle an error */
+static void UserAppSM_WaitChannelOpen(void)         
+{
+  /* Monitor the channel status to check if channel is opened */
+  if(AntRadioStatus() == ANT_OPEN)
+  {
+    UserApp_StateMachine = UserAppSM_ChannelOpen;
+  }
+  
+  /* Check for timeout */
+  if( IsTimeUp(&UserApp_u32Timeout, TIMEOUT_VALUE) )
+  {
+    AntCloseChannel();
+    LedOff(GREEN);
+    LedOn(YELLOW);
+    UserApp_StateMachine = UserAppSM_Idle;
+  }
+
+} /* end static void UserAppSM_WaitChannelOpen(void) */
      
 
 /*-------------------------------------------------------------------------------------------------------------------*/
