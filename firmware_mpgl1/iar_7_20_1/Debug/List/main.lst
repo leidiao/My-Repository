@@ -1,0 +1,273 @@
+###############################################################################
+#
+# IAR ANSI C/C++ Compiler V7.20.1.7305/W32 for ARM        08/Jun/2016  10:07:51
+# Copyright 1999-2014 IAR Systems AB.
+#
+#    Cpu mode     =  thumb
+#    Endian       =  little
+#    Source file  =  
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\application\main.c
+#    Command line =  
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\application\main.c -D
+#        MPGL1 -D MPG1 --preprocess=cl
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\Debug\List\
+#        -lC
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\Debug\List\ -o
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\Debug\Obj\
+#        --no_cse --no_unroll --no_inline --no_code_motion --no_tbaa
+#        --no_clustering --no_scheduling --debug --endian=little
+#        --cpu=Cortex-M3 -e --fpu=None --dlib_config
+#        E:\EIE\arm\INC\c\DLib_Config_Normal.h -I
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\ -I
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\..\bsp\ -I
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\..\drivers\ -I
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\..\application\
+#        -I
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\..\..\firmware_mpg_common\
+#        -I
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\..\..\firmware_mpg_common\application\
+#        -I
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\..\..\firmware_mpg_common\cmsis\
+#        -I
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\..\..\firmware_mpg_common\drivers\
+#        -On --use_c++_inline -I E:\EIE\arm\CMSIS\Include\
+#    List file    =  
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\Debug\List\main.lst
+#    Object file  =  
+#        E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\iar_7_20_1\Debug\Obj\main.o
+#
+###############################################################################
+
+E:\EIE\EiE\MASTER\Razor_Atmel\firmware_mpgl1\application\main.c
+      1          /***********************************************************************************************************************
+      2          File: main.c                                                                
+      3          
+      4          Description:
+      5          Container for the MPG firmware.  
+      6          ***********************************************************************************************************************/
+      7          
+      8          #include "configuration.h"
+      9          
+     10          /***********************************************************************************************************************
+     11          Global variable definitions with scope across entire project.
+     12          All Global variable names shall start with "G_"
+     13          ***********************************************************************************************************************/
+     14          /* New variables */
+
+   \                                 In section .bss, align 4
+     15          volatile u32 G_u32SystemFlags = 0;                     /* Global system flags */
+   \                     G_u32SystemFlags:
+   \   00000000                      DS8 4
+
+   \                                 In section .bss, align 4
+     16          volatile u32 G_u32ApplicationFlags = 0;                /* Global applications flags: set when application is successfully initialized */
+   \                     G_u32ApplicationFlags:
+   \   00000000                      DS8 4
+     17          
+     18          /*--------------------------------------------------------------------------------------------------------------------*/
+     19          /* External global variables defined in other files (must indicate which file they are defined in) */
+     20          extern volatile u32 G_u32SystemTime1ms;                /* From board-specific source file */
+     21          extern volatile u32 G_u32SystemTime1s;                 /* From board-specific source file */
+     22          
+     23          
+     24          /***********************************************************************************************************************
+     25          Global variable definitions with scope limited to this local application.
+     26          Variable names shall start with "Main_" and be declared as static.
+     27          ***********************************************************************************************************************/
+     28          
+     29          
+     30          /***********************************************************************************************************************
+     31          Main Program
+     32          Main has two sections:
+     33          
+     34          1. Initialization which is run once on power-up or reset.  All drivers and applications are setup here without timing
+     35          contraints but must complete execution regardless of success or failure of starting the application. 
+     36          
+     37          2. Super loop which runs infinitely giving processor time to each application.  The total loop time should not exceed
+     38          1ms of execution time counting all application execution.  SystemSleep() will execute to complete the remaining time in
+     39          the 1ms period.
+     40          ***********************************************************************************************************************/
+     41          
+
+   \                                 In section .text, align 4, keep-with-next
+     42          void main(void)
+     43          {
+   \                     main: (+1)
+   \   00000000   0xB580             PUSH     {R7,LR}
+     44            G_u32SystemFlags |= _SYSTEM_INITIALIZING;
+   \   00000002   0x4829             LDR.N    R0,??main_0
+   \   00000004   0x6800             LDR      R0,[R0, #+0]
+   \   00000006   0xF050 0x4000      ORRS     R0,R0,#0x80000000
+   \   0000000A   0x4927             LDR.N    R1,??main_0
+   \   0000000C   0x6008             STR      R0,[R1, #+0]
+     45          
+     46            /* Low level initialization */
+     47            WatchDogSetup(); /* During development, does not reset processor if timeout */
+   \   0000000E   0x.... 0x....      BL       WatchDogSetup
+     48            GpioSetup();
+   \   00000012   0x.... 0x....      BL       GpioSetup
+     49            ClockSetup();
+   \   00000016   0x.... 0x....      BL       ClockSetup
+     50            InterruptSetup();
+   \   0000001A   0x.... 0x....      BL       InterruptSetup
+     51            SysTickSetup();
+   \   0000001E   0x.... 0x....      BL       SysTickSetup
+     52          
+     53            /* Driver initialization */
+     54            MessagingInitialize();
+   \   00000022   0x.... 0x....      BL       MessagingInitialize
+     55            UartInitialize();
+   \   00000026   0x.... 0x....      BL       UartInitialize
+     56            DebugInitialize();
+   \   0000002A   0x.... 0x....      BL       DebugInitialize
+     57          
+     58            /* Debug messages through DebugPrintf() are available from here */
+     59          
+     60            SspInitialize();
+   \   0000002E   0x.... 0x....      BL       SspInitialize
+     61            TWIInitialize();
+   \   00000032   0x.... 0x....      BL       TWIInitialize
+     62          
+     63            LcdInitialize();
+   \   00000036   0x.... 0x....      BL       LcdInitialize
+     64            LedInitialize();
+   \   0000003A   0x.... 0x....      BL       LedInitialize
+     65            ButtonInitialize();
+   \   0000003E   0x.... 0x....      BL       ButtonInitialize
+     66            AntInitialize();
+   \   00000042   0x.... 0x....      BL       AntInitialize
+     67            SdCardInitialize();
+   \   00000046   0x.... 0x....      BL       SdCardInitialize
+     68          
+     69            /* Application initialization */
+     70              UserAppInitialize();
+   \   0000004A   0x.... 0x....      BL       UserAppInitialize
+     71            
+     72            /* Exit initialization */
+     73            SystemStatusReport();
+   \   0000004E   0x.... 0x....      BL       SystemStatusReport
+     74            G_u32SystemFlags &= ~_SYSTEM_INITIALIZING;
+   \   00000052   0x4815             LDR.N    R0,??main_0
+   \   00000054   0x6800             LDR      R0,[R0, #+0]
+   \   00000056   0x0040             LSLS     R0,R0,#+1        ;; ZeroExtS R0,R0,#+1,#+1
+   \   00000058   0x0840             LSRS     R0,R0,#+1
+   \   0000005A   0x4913             LDR.N    R1,??main_0
+   \   0000005C   0x6008             STR      R0,[R1, #+0]
+     75            
+     76            /* Super loop */  
+     77            while(1)
+     78            {
+     79              WATCHDOG_BONE();
+   \                     ??main_1: (+1)
+   \   0000005E   0x4813             LDR.N    R0,??main_0+0x4  ;; 0xa5000001
+   \   00000060   0x4913             LDR.N    R1,??main_0+0x8  ;; 0x400e1250
+   \   00000062   0x6008             STR      R0,[R1, #+0]
+     80              
+     81              /* Drivers */
+     82              LedUpdate();
+   \   00000064   0x.... 0x....      BL       LedUpdate
+     83              ButtonRunActiveState();
+   \   00000068   0x.... 0x....      BL       ButtonRunActiveState
+     84              UartRunActiveState();
+   \   0000006C   0x.... 0x....      BL       UartRunActiveState
+     85              SspRunActiveState();
+   \   00000070   0x.... 0x....      BL       SspRunActiveState
+     86              TWIRunActiveState();
+   \   00000074   0x.... 0x....      BL       TWIRunActiveState
+     87              MessagingRunActiveState();
+   \   00000078   0x.... 0x....      BL       MessagingRunActiveState
+     88              DebugRunActiveState();
+   \   0000007C   0x.... 0x....      BL       DebugRunActiveState
+     89              LcdRunActiveState();
+   \   00000080   0x.... 0x....      BL       LcdRunActiveState
+     90              AntRunActiveState();
+   \   00000084   0x.... 0x....      BL       AntRunActiveState
+     91              SdCardRunActiveState();
+   \   00000088   0x.... 0x....      BL       SdCardRunActiveState
+     92          
+     93              /* Applications */
+     94              UserAppRunActiveState();
+   \   0000008C   0x.... 0x....      BL       UserAppRunActiveState
+     95              
+     96              /* System sleep*/
+     97              HEARTBEAT_OFF();
+   \   00000090   0xF05F 0x4000      MOVS     R0,#-2147483648
+   \   00000094   0x4907             LDR.N    R1,??main_0+0xC  ;; 0x400e0c30
+   \   00000096   0x6008             STR      R0,[R1, #+0]
+     98              SystemSleep();
+   \   00000098   0x.... 0x....      BL       SystemSleep
+     99              HEARTBEAT_ON();
+   \   0000009C   0xF05F 0x4000      MOVS     R0,#-2147483648
+   \   000000A0   0x4905             LDR.N    R1,??main_0+0x10  ;; 0x400e0c34
+   \   000000A2   0x6008             STR      R0,[R1, #+0]
+   \   000000A4   0xE7DB             B.N      ??main_1
+   \   000000A6   0xBF00             Nop      
+   \                     ??main_0:
+   \   000000A8   0x........         DC32     G_u32SystemFlags
+   \   000000AC   0xA5000001         DC32     0xa5000001
+   \   000000B0   0x400E1250         DC32     0x400e1250
+   \   000000B4   0x400E0C30         DC32     0x400e0c30
+   \   000000B8   0x400E0C34         DC32     0x400e0c34
+    100              
+    101            } /* end while(1) main super loop */
+    102            
+    103          } /* end main() */
+    104          
+    105          
+    106          /*--------------------------------------------------------------------------------------------------------------------*/
+    107          /* End of File */
+    108          /*--------------------------------------------------------------------------------------------------------------------*/
+
+   Maximum stack usage in bytes:
+
+   .cstack Function
+   ------- --------
+       8   main
+         8   -> AntInitialize
+         8   -> AntRunActiveState
+         8   -> ButtonInitialize
+         8   -> ButtonRunActiveState
+         8   -> ClockSetup
+         8   -> DebugInitialize
+         8   -> DebugRunActiveState
+         8   -> GpioSetup
+         8   -> InterruptSetup
+         8   -> LcdInitialize
+         8   -> LcdRunActiveState
+         8   -> LedInitialize
+         8   -> LedUpdate
+         8   -> MessagingInitialize
+         8   -> MessagingRunActiveState
+         8   -> SdCardInitialize
+         8   -> SdCardRunActiveState
+         8   -> SspInitialize
+         8   -> SspRunActiveState
+         8   -> SysTickSetup
+         8   -> SystemSleep
+         8   -> SystemStatusReport
+         8   -> TWIInitialize
+         8   -> TWIRunActiveState
+         8   -> UartInitialize
+         8   -> UartRunActiveState
+         8   -> UserAppInitialize
+         8   -> UserAppRunActiveState
+         8   -> WatchDogSetup
+
+
+   Section sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       4  G_u32ApplicationFlags
+       4  G_u32SystemFlags
+     188  main
+
+ 
+   8 bytes in section .bss
+ 188 bytes in section .text
+ 
+ 188 bytes of CODE memory
+   8 bytes of DATA memory
+
+Errors: none
+Warnings: none
