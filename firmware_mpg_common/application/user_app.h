@@ -32,6 +32,9 @@ Header file for yournewtaskname.c
 #define ANT_TX_POWER_USERAPP            RADIO_TX_POWER_0DBM
 
 
+#define OutsideTemperatureTime          600000
+#define TIMEOUT_VALUE                   30000
+
 /**********************************************************************************************************************
 Type Definitions
 **********************************************************************************************************************/
@@ -66,8 +69,10 @@ void UserAppRunActiveState(void);
 /***********************************************************************************************************************
 State Machine Declarations
 ***********************************************************************************************************************/
-static void UserAppSM_Idle(void);    
+static void UserAppSM_Idle(void); 
 static void UserAppSM_WaitChannelOpen(void);
+static void UserAppSM_ChannelOpen(void);
+static void UserAppSM_WaitChannelClose(void);
 
 static void UserAppSM_Error(void);         
 static void UserAppSM_FailedInit(void);        
