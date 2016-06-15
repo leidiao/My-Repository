@@ -22,8 +22,8 @@ Header file for yournewtaskname.c
 
 /* Required constants for ANT channel configuration */
 #define ANT_CHANNEL_USERAPP             (u8)0                 
-#define ANT_SERIAL_LO_USERAPP           (u8)0x34                
-#define ANT_SERIAL_HI_USERAPP           (u8)0x12               
+#define ANT_SERIAL_LO_USERAPP           (u8)0x6B                
+#define ANT_SERIAL_HI_USERAPP           (u8)0x19               
 #define ANT_DEVICE_TYPE_USERAPP         (u8)0                 
 #define ANT_TRANSMISSION_TYPE_USERAPP   (u8)0                 
 #define ANT_CHANNEL_PERIOD_LO_USERAPP   (u8)0x00              

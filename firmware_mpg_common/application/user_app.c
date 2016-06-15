@@ -52,6 +52,7 @@ extern volatile u32 G_u32ApplicationFlags;             /* From main.c */
 extern volatile u32 G_u32SystemTime1ms;                /* From board-specific source file */
 extern volatile u32 G_u32SystemTime1s;                 /* From board-specific source file */
 
+extern volatile u32 G_OutsideTemperature[55];
 
 extern AntSetupDataType G_stAntSetupData;                         /* From ant.c */
 extern u32 G_u32AntApiCurrentDataTimeStamp;                       /* From ant_api.c */
@@ -67,8 +68,13 @@ Variable names shall start with "UserApp_" and be declared as static.
 static fnCode_type UserApp_StateMachine;            /* The state machine function pointer */
 static u32 UserApp_u32Timeout;                      /* Timeout counter used across states */
 
-static u32 OutsideTemperature[55];
-static u32 InsideTemperature[28];
+
+static bool ControlLcdFlag1;
+
+static bool TemperatureFlag;                        /*flag to change temperature*/
+static bool SpeedFlag;                              /*flag to change speed*/
+static bool AutoFlag;                               /*flag to auto*/
+static bool SleepFlag;                               /*flag to sleep*/
 /**********************************************************************************************************************
 Function Definitions
 **********************************************************************************************************************/
@@ -169,39 +175,14 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
- /*Set a changed outside temperature */
-  static u8 i=0;
-  static u32 u32OutsideCount=OutsideTemperatureTime;
-  static u8  u8OutsideCurrentTemperature=0;
-  OutsideTemperature[0]=0;
-  u32OutsideCount--;
-  if(u32OutsideCount==0)
-  {
-    u32OutsideCount=OutsideTemperatureTime;
-    i++;
-    if(i<=27)
-    {
-      u8OutsideCurrentTemperature++;
-      OutsideTemperature[i]=u8OutsideCurrentTemperature;
-    }
-    else
-    {
-      u8OutsideCurrentTemperature--;
-      OutsideTemperature[i]=u8OutsideCurrentTemperature;
-    }
-    if(i==55)
-    {
-      u8OutsideCurrentTemperature=0;
-      i=0;
-    }
-  }     
-  
   
   /* Look for BUTTON 0 to open channel */
   if(WasButtonPressed(BUTTON0))
   {
     /* Got the button, so complete one-time actions before next state */
-    ButtonAcknowledge(BUTTON0);    
+    ButtonAcknowledge(BUTTON0); 
+    /*Prepare for Opening Lcd*/
+    ControlLcdFlag1=FALSE;
     /* Queue open channel and change LED0 from yellow to blinking green to indicate channel is opening */
     AntOpenChannel();
     /* Set timer and advance states */
@@ -216,8 +197,6 @@ static void UserAppSM_Idle(void)
 /* Handle an error */
 static void UserAppSM_WaitChannelOpen(void)         
 {
-  static u16 TimeCount1=500;
-  static u8 String1[]="It is open!";
   /* Monitor the channel status to check if channel is opened */
   if(AntRadioStatus() == ANT_OPEN)
   {
@@ -239,26 +218,58 @@ static void UserAppSM_WaitChannelOpen(void)
 /* Handle an error */
 static void UserAppSM_ChannelOpen(void)
 {
+  static u16 TimeCount=500;
   static u32 u32InsideCount=InsideTemperatureTime;
   static u8 u8LastState = 0xff;
-  static u8 au8DataContent[] = "xxxxxxxxxxxxxxxx";
+  static u8 au8SeparateArrary1[3]={0,0,'\0'};
+  static u8 au8SeparateArrary2[3]={0,0,'\0'};
+  static u8 au8DataContent1[] = "xxxxxxxxxxxxxxxx";
+  static u8 au8DataContent2[] = "xxxxxxxxxxxxxxxx";
   static u8 au8LastAntData[ANT_APPLICATION_MESSAGE_BYTES] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  static u8 String00[]="Func:Cool";
-  static u8 String01[]="Func:Heat";
-  static u8 String02[]="Func:Com";
-  static u8 String03[]="Func:Are";
-  static u8 String04[]="Func:Aer";
+  static u8 u8String00[]="Func:Cool ";
+  static u8 u8String01[]="Func:Heat ";
+  static u8 u8String02[]="Func:Com  ";
+  static u8 u8String03[]="Func:Are  ";
+  static u8 u8String04[]="Func:Aer  ";  
+  static u8 u8String1[]="Tem:";
+  static u8 u8String20[]="Speed:L ";
+  static u8 u8String21[]="Speed:M ";
+  static u8 u8String22[]="Speed:H ";
+  static u8 u8String3[]="AutoTime: ";
+  static u8 u8String4[]="Sleep  ";
+  static bool ControlLcdFlag=TRUE;
   
-  static u8 String1[]="Tem:";
-  bool bGotNewData;
+ 
+  if(ControlLcdFlag)
+  {
+    if(TimeCount)
+    {
+      LedOn(LCD_RED);
+      LedOn(LCD_GREEN);
+      LedOn(LCD_BLUE);
+      PWMAudioSetFrequency(BUZZER1, 500);
+      PWMAudioOn(BUZZER1);
+      TimeCount--;
+    }
+    else
+   {
+     LedOff(LCD_RED);
+     LedOff(LCD_GREEN);
+     LedOff(LCD_BLUE);
+     PWMAudioOff(BUZZER1);
+     ControlLcdFlag=FALSE;
+   }
+  }
+    
 
  
   /* Check for BUTTON0 to close channel */
-  if(WasButtonPressed(BUTTON1))
+  if(WasButtonPressed(BUTTON0))
   {
     /* Got the button, so complete one-time actions before next state */
-    ButtonAcknowledge(BUTTON1);
-    
+    ButtonAcknowledge(BUTTON0);
+    /*Close Lcd*/
+    ControlLcdFlag1=TRUE;
     /* Queue close channel, initialize the u8LastState variable and change LED to blinking green to indicate channel is closing */
     AntCloseChannel();
     u8LastState = 0xff;   
@@ -268,12 +279,12 @@ static void UserAppSM_ChannelOpen(void)
   } /* end if(WasButtonPressed(BUTTON0)) */
   
   /* A slave channel can close on its own, so explicitly check channel status */  
+  /* Check for timeout */
   if(AntRadioStatus() != ANT_OPEN)
   {
-    u8LastState = 0xff;
-    
+    u8LastState = 0xff;   
     UserApp_u32Timeout = G_u32SystemTime1ms;
-    AntOpenChannel();
+    
   } /* if(AntRadioStatus() != ANT_OPEN) */
 
   /* Always check for ANT messages */
@@ -283,57 +294,91 @@ static void UserAppSM_ChannelOpen(void)
     if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {
       /* Check if the new data is the same as the old data and update as we go */
-      bGotNewData = FALSE;
+      
       for(u8 i = 0; i < ANT_APPLICATION_MESSAGE_BYTES; i++)
       {
         if(G_au8AntApiCurrentData[i] != au8LastAntData[i])
         {
-          bGotNewData = TRUE;
           au8LastAntData[i] = G_au8AntApiCurrentData[i];
-          au8DataContent[2 * i] = HexToASCIICharUpper(G_au8AntApiCurrentData[i] / 16);
-          au8DataContent[2*i+1] = HexToASCIICharUpper(G_au8AntApiCurrentData[i] % 16); 
-        }
-      }
-      if(bGotNewData)
-      {
-        /*Test*/
-        DebugPrintf(au8DataContent);
-        DebugLineFeed();
-        /*The switch to open led,lcd*/
-        if(G_au8AntApiCurrentData[7]==0x00)
-        {
-          LedOn(WHITE);
-          LedOn(PURPLE);
-          LedOn(BLUE);
-          LedOn(CYAN);
-          LedOn(GREEN);
-          LedOn(YELLOW);
-          LedOn(ORANGE);
-          LedOn(RED);
-          /* Backlight to white */  
-          LedOn(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          /*The function choice*/
-          switch(au8DataContent[6])
-          {
-            case 00:LCDClearChars(LINE1_START_ADDR,8);
-                    LCDMessage(LINE1_START_ADDR,String00);
-            case 01:LCDClearChars(LINE1_START_ADDR,8);
-                    LCDMessage(LINE1_START_ADDR,String01);
-            case 02:LCDClearChars(LINE1_START_ADDR,8);
-                    LCDMessage(LINE1_START_ADDR,String02);
-            case 03:LCDClearChars(LINE1_START_ADDR,8);
-                    LCDMessage(LINE1_START_ADDR,String03);
-            case 04:LCDClearChars(LINE1_START_ADDR,8);
-                    LCDMessage(LINE1_START_ADDR,String04);
-          }
-          /*The temperature be set*/
-          LCDClearChars(LINE1_START_ADDR+10,6);
-          LCDMessage(LINE1_START_ADDR+10,au8DataContent+2);
- 
-        }
-      }
+          
+           if(G_au8AntApiCurrentData[0]==0x00)
+           {
+                /* Backlight to white */  
+                LedOn(LCD_RED);
+                LedOn(LCD_GREEN);
+                LedOn(LCD_BLUE);
+             /*The function choice*/
+             if(i==1)
+             {
+                switch(G_au8AntApiCurrentData[1])
+                {
+                  case 0x00:LCDClearChars(LINE1_START_ADDR,9);
+                            LCDMessage(LINE1_START_ADDR,u8String00);
+                            break;
+                  case 0x01:LCDClearChars(LINE1_START_ADDR,9);
+                            LCDMessage(LINE1_START_ADDR,u8String01);
+                            break;
+                  case 0x02:LCDClearChars(LINE1_START_ADDR,9);
+                            LCDMessage(LINE1_START_ADDR,u8String02);
+                            break;
+                  case 0x03:LCDClearChars(LINE1_START_ADDR,9);
+                            LCDMessage(LINE1_START_ADDR,u8String03);
+                            break;
+                  case 0x04:LCDClearChars(LINE1_START_ADDR,9);
+                            LCDMessage(LINE1_START_ADDR,u8String04);
+                            break;
+                }
+             }
+             /*The temperature be set*/
+             if(i==2)
+             {
+               
+               au8DataContent1[0] = (G_au8AntApiCurrentData[2]/10+48);
+               au8DataContent1[1] = (G_au8AntApiCurrentData[2]%10+48);
+               au8SeparateArrary1[0]=au8DataContent1[0];
+               au8SeparateArrary1[1]=au8DataContent1[1];
+               
+               LCDClearChars(LINE1_START_ADDR+11,5);
+               LCDMessage(LINE1_START_ADDR+10,u8String1);
+               LCDMessage(LINE1_START_ADDR+14,au8SeparateArrary1);
+               TemperatureFlag=TRUE;
+             }
+             /*wind speed*/
+             if(i==3)
+             {
+               switch(G_au8AntApiCurrentData[3])
+                {
+                  case 0x01:LCDClearChars(LINE2_START_ADDR,8);
+                            LCDMessage(LINE2_START_ADDR,u8String20);
+                            break;
+                  case 0x02:LCDClearChars(LINE2_START_ADDR,8);
+                            LCDMessage(LINE2_START_ADDR,u8String21);
+                            break;
+                  case 0x03:LCDClearChars(LINE2_START_ADDR,8);
+                            LCDMessage(LINE2_START_ADDR,u8String22);
+                            break;
+                }
+             }/*end i==3*/
+             if(i==4)
+             {
+               AutoFlag=TRUE;
+               au8DataContent2[0] = HexToASCIICharUpper(G_au8AntApiCurrentData[4] / 16);
+               au8DataContent2[1] = HexToASCIICharUpper(G_au8AntApiCurrentData[4] % 16);
+               au8SeparateArrary2[0]=au8DataContent2[0];
+               au8SeparateArrary2[1]=au8DataContent1[1];
+               
+               
+               LCDClearChars(LINE2_START_ADDR+9,11);
+               LCDMessage(LINE2_START_ADDR+9,u8String3);
+               LCDMessage(LINE2_START_ADDR+18,au8SeparateArrary2);
+             }
+             if(i==5)
+             {
+               SleepFlag=TRUE;
+             }
+           }/*end open*/
+        }/*end compare*/
+      }/*end loop*/
       
 
 
@@ -357,7 +402,15 @@ static void UserAppSM_WaitChannelClose(void)
   /* Monitor the channel status to check if channel is closed */
   if(AntRadioStatus() == ANT_CLOSED)
   {
-    UserApp_StateMachine = UserAppSM_Idle;
+   
+     UserApp_StateMachine = UserAppSM_Idle;
+     if(ControlLcdFlag1)
+     {
+        LedOff(LCD_RED);
+        LedOff(LCD_GREEN);
+        LedOff(LCD_BLUE);
+        LCDCommand(LCD_CLEAR_CMD);
+     }
   }
   
   /* Check for timeout */
