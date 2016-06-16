@@ -92,7 +92,7 @@ void main(void)
 
     /* Applications */
     UserAppRunActiveState();
-    
+    UserApp2RunActiveState();
     /* System sleep*/
     HEARTBEAT_OFF();
     SystemSleep();

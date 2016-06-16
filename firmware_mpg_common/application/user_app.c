@@ -43,7 +43,13 @@ All Global variable names shall start with "G_"
 /* New variables */
 volatile u32 G_u32UserAppFlags;                       /* Global state flags */
 
+volatile bool G_SpeedFlag;                             /*flag to change speed*/
+volatile bool G_AutoFlag;                              /*flag to auto*/
+volatile bool G_SleepFlag;                              /*flag to sleep*/
 
+volatile  u8   G_au8WindSpeedArrary3[2]={0,'\0'};          /*arrary to change the wind*/ 
+volatile  u8   G_au8AutoArrary4[2]={0,'\0'};               /*arrary to auto close*/
+volatile  u8   G_au8SleepArrary5[2]={0,'\0'}; 
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* Existing variables (defined in other files -- should all contain the "extern" keyword) */
 extern volatile u32 G_u32SystemFlags;                  /* From main.c */
@@ -71,10 +77,9 @@ static u32 UserApp_u32Timeout;                      /* Timeout counter used acro
 
 static bool ControlLcdFlag1;
 
-static bool TemperatureFlag;                        /*flag to change temperature*/
-static bool SpeedFlag;                              /*flag to change speed*/
-static bool AutoFlag;                               /*flag to auto*/
-static bool SleepFlag;                               /*flag to sleep*/
+
+
+
 /**********************************************************************************************************************
 Function Definitions
 **********************************************************************************************************************/
@@ -223,6 +228,7 @@ static void UserAppSM_ChannelOpen(void)
   static u8 u8LastState = 0xff;
   static u8 au8SeparateArrary1[3]={0,0,'\0'};
   static u8 au8SeparateArrary2[3]={0,0,'\0'};
+  
   static u8 au8DataContent1[] = "xxxxxxxxxxxxxxxx";
   static u8 au8DataContent2[] = "xxxxxxxxxxxxxxxx";
   static u8 au8LastAntData[ANT_APPLICATION_MESSAGE_BYTES] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -294,6 +300,8 @@ static void UserAppSM_ChannelOpen(void)
     if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {
       /* Check if the new data is the same as the old data and update as we go */
+      /*Sleep*/
+      G_au8SleepArrary5[0]=G_au8AntApiCurrentData[5];
       
       for(u8 i = 0; i < ANT_APPLICATION_MESSAGE_BYTES; i++)
       {
@@ -331,8 +339,7 @@ static void UserAppSM_ChannelOpen(void)
              }
              /*The temperature be set*/
              if(i==2)
-             {
-               
+             { 
                au8DataContent1[0] = (G_au8AntApiCurrentData[2]/10+48);
                au8DataContent1[1] = (G_au8AntApiCurrentData[2]%10+48);
                au8SeparateArrary1[0]=au8DataContent1[0];
@@ -341,42 +348,69 @@ static void UserAppSM_ChannelOpen(void)
                LCDClearChars(LINE1_START_ADDR+11,5);
                LCDMessage(LINE1_START_ADDR+10,u8String1);
                LCDMessage(LINE1_START_ADDR+14,au8SeparateArrary1);
-               TemperatureFlag=TRUE;
              }
              /*wind speed*/
              if(i==3)
              {
+               G_SpeedFlag=TRUE;
+               /*store G_au8AntApiCurrentData[3]*/
+               G_au8WindSpeedArrary3[0]=G_au8AntApiCurrentData[3];
+               
                switch(G_au8AntApiCurrentData[3])
                 {
-                  case 0x01:LCDClearChars(LINE2_START_ADDR,8);
+                  case 0x01:LCDClearChars(LINE2_START_ADDR,7);
                             LCDMessage(LINE2_START_ADDR,u8String20);
                             break;
-                  case 0x02:LCDClearChars(LINE2_START_ADDR,8);
+                  case 0x02:LCDClearChars(LINE2_START_ADDR,7);
                             LCDMessage(LINE2_START_ADDR,u8String21);
                             break;
-                  case 0x03:LCDClearChars(LINE2_START_ADDR,8);
+                  case 0x03:LCDClearChars(LINE2_START_ADDR,7);
                             LCDMessage(LINE2_START_ADDR,u8String22);
                             break;
                 }
              }/*end i==3*/
+             /*Auto close*/
              if(i==4)
              {
-               AutoFlag=TRUE;
-               au8DataContent2[0] = HexToASCIICharUpper(G_au8AntApiCurrentData[4] / 16);
-               au8DataContent2[1] = HexToASCIICharUpper(G_au8AntApiCurrentData[4] % 16);
+               G_AutoFlag=TRUE;
+               /*store G_au8AntApiCurrentData[4]*/
+               G_au8AutoArrary4[0]=G_au8AntApiCurrentData[4];
+               
+               au8DataContent2[0] = (G_au8AntApiCurrentData[4]/10+48);
+               au8DataContent2[1] = (G_au8AntApiCurrentData[4]%10+48);
                au8SeparateArrary2[0]=au8DataContent2[0];
-               au8SeparateArrary2[1]=au8DataContent1[1];
+               au8SeparateArrary2[1]=au8DataContent2[1];
                
                
-               LCDClearChars(LINE2_START_ADDR+9,11);
-               LCDMessage(LINE2_START_ADDR+9,u8String3);
-               LCDMessage(LINE2_START_ADDR+18,au8SeparateArrary2);
+               LCDClearChars(LINE2_START_ADDR+8,11);
+               LCDMessage(LINE2_START_ADDR+8,u8String3);
+               LCDMessage(LINE2_START_ADDR+17,au8SeparateArrary2);
              }
              if(i==5)
              {
-               SleepFlag=TRUE;
+
+               G_SleepFlag=TRUE;
              }
            }/*end open*/
+           if(G_au8AntApiCurrentData[0]==0xFF)
+           {
+             /*Close AutoClose*/
+             G_AutoFlag=FALSE;
+             
+             LedOff(WHITE);
+             LedOff(PURPLE);
+             LedOff(BLUE);
+             LedOff(CYAN);
+             LedOff(GREEN);
+             LedOff(YELLOW);
+             LedOff(ORANGE);
+             LedOff(RED);
+             
+             LedOff(LCD_RED);
+             LedOff(LCD_GREEN);
+             LedOff(LCD_BLUE);
+             LCDCommand(LCD_CLEAR_CMD);
+           }/*end close*/
         }/*end compare*/
       }/*end loop*/
       
@@ -402,10 +436,17 @@ static void UserAppSM_WaitChannelClose(void)
   /* Monitor the channel status to check if channel is closed */
   if(AntRadioStatus() == ANT_CLOSED)
   {
-   
      UserApp_StateMachine = UserAppSM_Idle;
      if(ControlLcdFlag1)
      {
+        LedOff(WHITE);
+        LedOff(PURPLE);
+        LedOff(BLUE);
+        LedOff(CYAN);
+        LedOff(GREEN);
+        LedOff(YELLOW);
+        LedOff(ORANGE);
+        LedOff(RED);
         LedOff(LCD_RED);
         LedOff(LCD_GREEN);
         LedOff(LCD_BLUE);
